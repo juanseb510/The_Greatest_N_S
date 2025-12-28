@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import FractionPair from '@/app/components/FractionPair';
+// We can safely import supabase now because you have the keys!
 import { supabase } from '@/lib/supabase';
 
 export default function GameUI() {
@@ -23,17 +24,20 @@ export default function GameUI() {
   useEffect(() => {
     const storedUsername = localStorage.getItem('username');
     if (!storedUsername) {
-      router.push('/login');
-      return;
+      // FIX: Instead of kicking you out, we set a default "Guest" user
+      // router.push('/login'); <--- This was the line causing the redirect loop
+      setUsername("Guest_Designer");
+    } else {
+      setUsername(storedUsername);
     }
-    setUsername(storedUsername);
     setMounted(true);
   }, [router]);
 
-  // ✅ Get player ID from Supabase (based on username)
+  // ✅ Get player ID from Supabase (only if we have a real username)
   useEffect(() => {
     const fetchPlayerId = async () => {
-      if (!username) return;
+      if (!username || username === "Guest_Designer") return;
+      
       const { data, error } = await supabase
         .from('profiles')
         .select('id')
@@ -42,7 +46,7 @@ export default function GameUI() {
 
       if (error) {
         console.error('❌ Error fetching player ID:', error.message);
-      } else {
+      } else if (data) {
         setPlayerId(data.id);
       }
     };
@@ -71,7 +75,7 @@ export default function GameUI() {
     setRound((r) => r + 1);
   };
 
-  // ✅ Save score using player ID
+  // ✅ Save score using player ID (only if we found a real player)
   useEffect(() => {
     const saveScore = async () => {
       if (gameOver && playerId !== null) {
